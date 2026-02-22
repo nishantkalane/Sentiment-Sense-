@@ -1,0 +1,7 @@
+text,sentiment_label,sarcasm_label
+I absolutely love this product update!,positive,not_sarcastic
+Great support response and quick resolution,positive,not_sarcastic
+The app keeps crashing and I am disappointed,negative,not_sarcastic
+Yeah right, this is the best service ever...,negative,sarcastic
+Sure, because waiting 2 hours is amazing,negative,sarcastic
+It works as expected and is okay,neutral,not_sarcastic
