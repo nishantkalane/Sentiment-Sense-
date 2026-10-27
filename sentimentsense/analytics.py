@@ -79,12 +79,12 @@ def extract_representative_examples(
     text_col: str = "text",
     max_per_label: int = 2,
 ) -> dict:
-    required = {"final_label", "sentiment_confidence", text_col}
+    required = {"sentiment_label", "sentiment_confidence", text_col}
     if not required.issubset(df.columns):
         return {}
 
     examples: dict[str, list[dict]] = {}
-    for label, sub_df in df.groupby("final_label"):
+    for label, sub_df in df.groupby("sentiment_label"):
         ranked = sub_df.sort_values("sentiment_confidence", ascending=False).head(max_per_label)
         items: list[dict] = []
         for _, row in ranked.iterrows():

@@ -1,22 +1,27 @@
 from __future__ import annotations
 
 import argparse
+import math
+import sys
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
-from datasets import Dataset
-from sklearn.model_selection import train_test_split
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    DataCollatorWithPadding,
-    Trainer,
-    TrainingArguments,
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from sentimentsense.dataset import (
+    SARCASM_COLUMN,
+    SENTIMENT_COLUMN,
+    TEXT_COLUMN,
+    load_labeled_csv,
+    validate_labeled_dataframe,
 )
 
-TEXT_COL = "text"
-SENTIMENT_COL = "sentiment_label"
-SARCASM_COL = "sarcasm_label"
+TEXT_COL = TEXT_COLUMN
+SENTIMENT_COL = SENTIMENT_COLUMN
+SARCASM_COL = SARCASM_COLUMN
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,10 +37,55 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_input(df: pd.DataFrame) -> None:
-    required_cols = {TEXT_COL, SENTIMENT_COL, SARCASM_COL}
-    missing = required_cols.difference(df.columns)
-    if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}")
+    validate_labeled_dataframe(df)
+
+
+def validate_stratified_split(
+    df: pd.DataFrame, label_col: str, test_size: float
+) -> None:
+    if not 0 < test_size < 1:
+        raise ValueError("test_size must be greater than 0 and less than 1")
+
+    labels = df[label_col].dropna().astype(str)
+    class_counts = labels.value_counts()
+    class_count = len(class_counts)
+    evaluation_rows = max(1, math.ceil(len(labels) * test_size))
+    training_rows = len(labels) - evaluation_rows
+
+    if (
+        class_count < 2
+        or evaluation_rows < class_count
+        or training_rows < class_count
+        or (class_counts < 2).any()
+    ):
+        counts = ", ".join(
+            f"{label}={count}" for label, count in class_counts.sort_index().items()
+        )
+        raise ValueError(
+            f"Cannot create a stratified split for '{label_col}' with "
+            f"test_size={test_size}: {len(labels)} rows, {class_count} classes "
+            f"({counts}). Provide more examples for every class and enough "
+            "rows for each class to appear in both train and evaluation splits."
+        )
+
+
+def validate_training_data(df: pd.DataFrame, test_size: float) -> None:
+    validate_input(df)
+    for label_col in (SENTIMENT_COL, SARCASM_COL):
+        validate_stratified_split(df, label_col, test_size)
+
+
+def require_training_dependencies() -> None:
+    try:
+        import datasets  # noqa: F401
+        import sklearn  # noqa: F401
+        import transformers  # noqa: F401
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Training dependencies are missing. Install the project "
+            "requirements with 'python -m pip install -r requirements.txt' "
+            "before running training."
+        ) from exc
 
 
 def encode_labels(series: pd.Series) -> tuple[pd.Series, dict[int, str], dict[str, int]]:
@@ -56,6 +106,16 @@ def train_one_task(
     max_length: int,
     test_size: float,
 ) -> None:
+    from datasets import Dataset
+    from sklearn.model_selection import train_test_split
+    from transformers import (
+        AutoModelForSequenceClassification,
+        AutoTokenizer,
+        DataCollatorWithPadding,
+        Trainer,
+        TrainingArguments,
+    )
+
     work_df = df[[TEXT_COL, label_col]].dropna().copy()
     work_df[TEXT_COL] = work_df[TEXT_COL].astype(str)
 
@@ -118,14 +178,19 @@ def train_one_task(
     tokenizer.save_pretrained(str(task_dir))
 
 
-if __name__ == "__main__":
+def main() -> None:
     args = parse_args()
     dataset_path = Path(args.data)
-    if not dataset_path.exists():
-        raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+    try:
+        if not dataset_path.exists():
+            raise FileNotFoundError(f"Dataset not found: {dataset_path}")
 
-    raw_df = pd.read_csv(dataset_path)
-    validate_input(raw_df)
+        raw_df = load_labeled_csv(dataset_path)
+        validate_training_data(raw_df, args.test_size)
+        require_training_dependencies()
+    except (OSError, UnicodeError, ValueError, RuntimeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -152,3 +217,7 @@ if __name__ == "__main__":
     )
 
     print("Training complete. Saved local models to:", out_dir.resolve())
+
+
+if __name__ == "__main__":
+    main()

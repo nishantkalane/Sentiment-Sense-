@@ -1,0 +1,144 @@
+{
+  "data": "data\\big_sample_data.csv",
+  "dataset_name": "big_sample_data",
+  "source_url": "",
+  "dataset_type": "synthetic",
+  "split": "generated",
+  "task": "joint",
+  "evaluation_method": "row-wise evaluation through SentimentEngine.analyze_text",
+  "rows": 8000,
+  "excluded_rows": 0,
+  "excluded_reason": "",
+  "backend": "offline heuristic",
+  "latency_ms": {
+    "median": 0.0152,
+    "p95": 0.0231
+  },
+  "label_mapping": {
+    "sentiment": {
+      "positive": "positive",
+      "negative": "negative",
+      "neutral": "neutral"
+    },
+    "sarcasm": {
+      "not_sarcastic": "not_sarcastic",
+      "sarcastic": "sarcastic"
+    }
+  },
+  "limitations": [
+    "Synthetic results do not establish generalization to real-world customer feedback."
+  ],
+  "sentiment": {
+    "accuracy": 0.9397,
+    "macro_f1": 0.9422,
+    "classification_report": {
+      "negative": {
+        "precision": 1.0,
+        "recall": 0.8479015462290943,
+        "f1-score": 0.917691256830601,
+        "support": 3169.0
+      },
+      "neutral": {
+        "precision": 0.9324009324009324,
+        "recall": 1.0,
+        "f1-score": 0.9650180940892642,
+        "support": 2000.0
+      },
+      "positive": {
+        "precision": 0.8936237373737373,
+        "recall": 1.0,
+        "f1-score": 0.9438239706617769,
+        "support": 2831.0
+      },
+      "accuracy": 0.93975,
+      "macro avg": {
+        "precision": 0.9420082232582233,
+        "recall": 0.9493005154096981,
+        "f1-score": 0.9421777738605474,
+        "support": 8000.0
+      },
+      "weighted avg": {
+        "precision": 0.9454563331633643,
+        "recall": 0.93975,
+        "f1-score": 0.9387706802522743,
+        "support": 8000.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        2687,
+        145,
+        337
+      ],
+      [
+        0,
+        2000,
+        0
+      ],
+      [
+        0,
+        0,
+        2831
+      ]
+    ],
+    "labels": [
+      "negative",
+      "neutral",
+      "positive"
+    ],
+    "class_distribution": {
+      "negative": 3169,
+      "neutral": 2000,
+      "positive": 2831
+    }
+  },
+  "sarcasm": {
+    "accuracy": 1.0,
+    "macro_f1": 1.0,
+    "classification_report": {
+      "not_sarcastic": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 7218.0
+      },
+      "sarcastic": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 782.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 8000.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 8000.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        7218,
+        0
+      ],
+      [
+        0,
+        782
+      ]
+    ],
+    "labels": [
+      "not_sarcastic",
+      "sarcastic"
+    ],
+    "class_distribution": {
+      "not_sarcastic": 7218,
+      "sarcastic": 782
+    }
+  }
+}

@@ -50,7 +50,8 @@ class InsightChatbot:
 
         summary = (
             f"Input: \"{text[:180]}\"\n"
-            f"Interpretation: {sentiment_msg} (confidence: {confidence:.2f})."
+            f"Interpretation: {sentiment_msg} (score: {confidence:.2f}; "
+            "not necessarily a calibrated probability)."
         )
 
         return ChatResponse(summary=summary, rationale=rationale, action=action)
@@ -68,10 +69,10 @@ class InsightChatbot:
                     analytics_payload=analytics_payload,
                     chat_history=chat_history,
                 )
-            except Exception as exc:
+            except Exception:
                 fallback_header = "Gemini is temporarily unavailable. Returning local insight fallback."
                 fallback = self._fallback_analytics_response(user_query, analytics_payload)
-                return f"{fallback_header}\n\n{fallback}\n\nReason: {exc}"
+                return f"{fallback_header}\n\n{fallback}"
 
         return self._fallback_analytics_response(user_query, analytics_payload)
 
@@ -82,10 +83,15 @@ class InsightChatbot:
         trend_changes = analytics_payload.get("trend_changes", [])
         examples = analytics_payload.get("representative_examples", {})
 
-        final_label = prediction.get("final_label", "unknown")
+        sentiment_label = prediction.get("sentiment_label", "unknown")
         sarcasm_flag = prediction.get("sarcasm_label", "unknown")
         sentiment_conf = prediction.get("sentiment_confidence", 0.0)
         sarcasm_conf = prediction.get("sarcasm_confidence", 0.0)
+        total_records = aggregate.get("total")
+        if total_records is None:
+            total_records = sum(aggregate.get("sentiment_counts", {}).values())
+        if not total_records and prediction:
+            total_records = 1
 
         trend_note = "No time trend available in current context."
         if trend:
@@ -111,21 +117,38 @@ class InsightChatbot:
                 sample_text = str(items[0].get("text", ""))
                 example_note = f"Top {label} example: \"{sample_text}\""
 
+        if total_records == 1:
+            scope_note = (
+                "Only one analyzed record is available; this is an item-level signal, "
+                "not a population-level conclusion."
+            )
+        elif total_records:
+            scope_note = f"{total_records} analyzed records are available in this context."
+        else:
+            scope_note = "No analyzed records are available in this context."
+
         return (
             "### Insight Summary\n"
             f"- **Question:** {user_query}\n"
-            f"- **Final label:** {final_label}\n"
+            f"- **Sentiment:** {sentiment_label}\n"
             f"- **Sarcasm flag:** {sarcasm_flag}\n"
-            f"- **Sentiment confidence:** {sentiment_conf:.2f}\n"
-            f"- **Sarcasm confidence:** {sarcasm_conf:.2f}\n\n"
-            "### Evidence\n"
+            f"- **Sentiment score:** {sentiment_conf:.2f} (backend-dependent; not necessarily a calibrated probability)\n"
+            f"- **Sarcasm score:** {sarcasm_conf:.2f} (backend-dependent; not necessarily a calibrated probability)\n\n"
+            "### Observed Evidence\n"
             f"- Aggregate counts: {aggregate.get('sentiment_counts', {})}\n"
             f"- Sarcasm counts: {aggregate.get('sarcasm_counts', {})}\n"
-            f"- {trend_note}\n\n"
+            f"- {example_note}\n"
+            f"- {scope_note}\n\n"
+            "### Interpretation\n"
+            f"- {trend_note}\n"
             f"- {change_note}\n"
-            f"- {example_note}\n\n"
-            "### Recommended Actions\n"
+            "\n"
+            "### Recommended Actions (General Guidance)\n"
             "- Prioritize items with negative sentiment and high confidence for quick response.\n"
             "- Manually review sarcastic items before escalation decisions.\n"
             "- Track day-over-day shifts to identify campaign or product impact.\n"
+            "\n"
+            "### Missing Information and Uncertainty\n"
+            "- Scores are backend-dependent and are not necessarily calibrated probabilities.\n"
+            f"- {trend_note}\n"
         )

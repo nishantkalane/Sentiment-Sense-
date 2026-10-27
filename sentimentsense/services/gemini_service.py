@@ -44,15 +44,15 @@ class GeminiService:
         self._init_error: str | None = None
 
         if not self.api_key:
-            self._init_error = f"Missing environment variable: {api_key_env}"
+            self._init_error = "Gemini is not configured. Local insight fallback is active."
             return
 
         try:
             genai = __import__("google.generativeai", fromlist=["GenerativeModel"])
             genai.configure(api_key=self.api_key)
             self._model = genai.GenerativeModel(model_name=self.model_name)
-        except Exception as exc:
-            self._init_error = f"Gemini initialization failed: {exc}"
+        except Exception:
+            self._init_error = "Gemini could not be initialized. Local insight fallback is active."
 
     @staticmethod
     def _load_dotenv_if_available() -> None:
